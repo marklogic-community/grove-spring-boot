@@ -19,5 +19,11 @@ That's telling the React app to talk to Spring Boot instead of the Node middle t
 The Spring Boot application - including connection information to MarkLogic - can be configured in 
 src/main/resources/application.properties. 
 
-Full Spring Boot docs are at https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/ . 
+Full Spring Boot docs are at https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/ 
+
+Grove Developer's starter guide is at https://wiki.marklogic.com/display/SAL/MUIR+Developer+Starters+Guide 
+
+Grove APIs are at https://project.marklogic.com/repo/users/gjosten/repos/muir-core-api/browse
+
+Possibly helpful instructions for eventually combining this with the React project - https://github.com/kantega/react-and-spring 
  
