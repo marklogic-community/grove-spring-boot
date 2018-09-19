@@ -28,5 +28,14 @@ dependencies {
 	compile "org.springframework.boot:spring-boot-starter-web"
 	compile "com.marklogic:marklogic-client-api:4.1.0"
 
-	testCompile "junit:junit"
+	testCompile "com.marklogic:marklogic-junit:0.10.0"
+
+	// Neither Gradle nor Intellij are happy without both of these included, not sure why
+	testRuntime "org.junit.jupiter:junit-jupiter-api:5.3.0"
+	testRuntime "org.junit.jupiter:junit-jupiter-engine:5.3.0"
+}
+
+// Needed by Gradle 4.6+ - see https://www.petrikainulainen.net/programming/testing/junit-5-tutorial-running-unit-tests-with-gradle/
+test {
+	useJUnitPlatform()
 }

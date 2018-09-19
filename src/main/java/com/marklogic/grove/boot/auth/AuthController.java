@@ -23,6 +23,9 @@ import javax.servlet.http.HttpSession;
 @RequestMapping("/api/auth")
 public class AuthController extends AbstractController {
 
+	protected final static String SESSION_USERNAME_KEY = "grove-spring-boot-username";
+	protected final static String SESSION_DATABASE_CLIENT_KEY = "grove-spring-boot-client";
+
 	@Autowired
 	private MarkLogicConfig markLogicConfig;
 
@@ -48,15 +51,15 @@ public class AuthController extends AbstractController {
 			throw ex;
 		}
 
-		session.setAttribute("grove-spring-boot-username", request.getUsername());
-		session.setAttribute("grove-spring-boot-client", client);
+		session.setAttribute(SESSION_USERNAME_KEY, request.getUsername());
+		session.setAttribute(SESSION_DATABASE_CLIENT_KEY, client);
 		return new SessionStatus(true);
 	}
 
 	@RequestMapping(value = "/logout", method = RequestMethod.POST)
 	public void logout(HttpSession session) {
 		logger.info("Logging out: " + getAuthenticatedUsername(session));
-		DatabaseClient client = (DatabaseClient) session.getAttribute("grove-spring-boot-client");
+		DatabaseClient client = (DatabaseClient) session.getAttribute(SESSION_DATABASE_CLIENT_KEY);
 		if (client != null) {
 			client.release();
 		}
@@ -77,6 +80,6 @@ public class AuthController extends AbstractController {
 	}
 
 	private String getAuthenticatedUsername(HttpSession session) {
-		return (String) session.getAttribute("grove-spring-boot-username");
+		return (String) session.getAttribute(SESSION_USERNAME_KEY);
 	}
 }
