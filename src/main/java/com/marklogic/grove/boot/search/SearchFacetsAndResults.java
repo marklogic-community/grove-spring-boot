@@ -6,6 +6,15 @@ public class SearchFacetsAndResults {
 	private long start;
 	private int pageLength;
 	private SearchResult[] results;
+	private SearchFacets facets;
+
+	public SearchFacets getFacets() {
+		return facets;
+	}
+
+	public void setFacets(SearchFacets facets) {
+		this.facets = facets;
+	}
 
 	public long getTotal() {
 		return total;
