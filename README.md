@@ -25,5 +25,5 @@ Grove Developer's starter guide is at https://wiki.marklogic.com/display/SAL/MUI
 
 Grove APIs are at https://project.marklogic.com/repo/users/gjosten/repos/muir-core-api/browse
 
-Possibly helpful instructions for eventually combining this with the React project - https://github.com/kantega/react-and-spring 
+Very helpful instructions for eventually combining this with the React project - https://karl.run/2018/05/07/kotlin-spring-boot-react/
  
