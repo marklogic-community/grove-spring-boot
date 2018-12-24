@@ -1,0 +1,30 @@
+filters	{…}
+and	[…]
+0
+type	queryText
+value	jones
+1
+constraint	eyeColor
+constraintType	range
+mode	and
+type	selection
+value	[…]
+0	blue
+2
+constraint	gender
+constraintType	range
+mode	and
+type	selection
+value	[…]
+0	male
+3
+constraint	Collection
+constraintType	collection
+mode	and
+type	selection
+value	[…]
+0	data
+options	{…}
+pageLength	10
+start	1
+

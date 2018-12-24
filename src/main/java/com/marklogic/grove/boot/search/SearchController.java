@@ -1,6 +1,7 @@
 package com.marklogic.grove.boot.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.io.JacksonHandle;
 import com.marklogic.client.query.QueryDefinition;
@@ -15,11 +16,11 @@ import javax.servlet.http.HttpSession;
 public class SearchController extends AbstractController {
 
 	@RequestMapping(value = "/{type}", method = RequestMethod.POST)
-	public JsonNode search(@PathVariable String type, @RequestBody SearchRequest searchRequest, HttpSession session) {
+	public JsonNode search(@PathVariable String type, @RequestBody ObjectNode searchRequest, HttpSession session) {
 		DatabaseClient client = (DatabaseClient) session.getAttribute("grove-spring-boot-client");
 
-		final long start = searchRequest.getOptions().getStart();
-		final long pageLength = searchRequest.getOptions().getPageLength();
+		final long start = searchRequest.get("options").get("start").asLong();
+		final long pageLength = searchRequest.get("options").get("pageLength").asLong();
 
 		QueryManager mgr = client.newQueryManager();
 		mgr.setPageLength(pageLength);
