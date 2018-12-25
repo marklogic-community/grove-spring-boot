@@ -1,0 +1,84 @@
+{
+  "and": [
+    {
+      "type": "queryText",
+      "value": "foo AND bar"
+    },
+    {
+      "type": "selection",
+      "constraint": "firstName",
+      "value": [
+        "Geert",
+        {
+          "not": "Patrick"
+        }
+      ],
+      "mode": "and"
+    },
+    {
+      "type": "selection",
+      "constraint": "active",
+      "value": true
+    },
+    {
+      "type": "range",
+      "constraint": "age",
+      "value": {
+        "ge": 20,
+        "ne": 99
+      }
+    },
+    {
+      "type": "selection",
+      "constraintType": "range",
+      "constraint": "eyeColor",
+      "value": [
+        "blue",
+        "brown"
+      ],
+      "mode": "or"
+    },
+    {
+      "or": [
+        {
+          "type": "selection",
+          "constraint": "occupationCategory",
+          "value": "software"
+        },
+        {
+          "and": [
+            {
+              "type": "selection",
+              "constraint": "occupationCategory",
+              "value": "IT"
+            },
+            {
+              "not": {
+                "or": [
+                  {
+                    "type": "selection",
+                    "constraint": "occupationCategory",
+                    "value": "marketing"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "near": {
+        "left": {
+          "type": "queryText",
+          "value": "Patrick"
+        },
+        "right": {
+          "type": "queryText",
+          "value": "McElwee"
+        },
+        "distance": 10
+      }
+    }
+  ]
+}
