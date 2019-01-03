@@ -1,0 +1,45 @@
+{
+  "filters": {
+    "and": [
+      {
+        "type": "queryText",
+        "value": ""
+      },
+      {
+        "constraint": "eyeColor",
+        "constraintType": "range",
+        "mode": "and",
+        "type": "selection",
+        "value": [
+          "blue",
+          "brown"
+        ]
+      },
+      {
+        "constraint": "Collection",
+        "constraintType": "collection",
+        "mode": "and",
+        "type": "selection",
+        "value": [
+          "data"
+        ]
+      },
+      {
+        "constraint": "Collection",
+        "constraintType": "collection",
+        "mode": "and",
+        "type": "selection",
+        "value": [
+          "data",
+          {
+            "not": "stuff"
+          }
+        ]
+      }
+    ]
+  },
+  "options": {
+    "pageLength": 10,
+    "start": 1
+  }
+}

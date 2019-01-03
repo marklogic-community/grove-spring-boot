@@ -1,0 +1,38 @@
+{
+  "filters": {
+    "and": [
+      {
+        "type": "queryText",
+        "value": ""
+      },
+      {
+        "type": "range",
+        "constraint": "age",
+        "value": {
+          "ge": 20,
+          "ne": 99
+        }
+      },
+      {
+        "type": "range",
+        "constraint": "height",
+        "value": {
+          "ge": 20
+        }
+      },
+      {
+        "type": "range",
+        "constraint": "someOr",
+        "mode": "or",
+        "value": {
+          "ge": 20,
+          "ne": 99
+        }
+      }
+    ]
+  },
+  "options": {
+    "pageLength": 10,
+    "start": 1
+  }
+}
