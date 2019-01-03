@@ -24,7 +24,6 @@ public class SearchController extends AbstractController {
 
 	@RequestMapping(value = "/{type}", method = RequestMethod.POST)
 	public JsonNode search(@PathVariable String type, @RequestBody ObjectNode searchRequest, HttpSession session) {
-
 		long start = 1;
 		long pageLength = 10;
 		if (searchRequest.has("options")) {
@@ -41,7 +40,6 @@ public class SearchController extends AbstractController {
 
 		QueryManager mgr = client.newQueryManager();
 		mgr.setPageLength(pageLength);
-
 		StructuredQueryBuilder sqb = mgr.newStructuredQueryBuilder(type);
 		StructuredQueryDefinition query = buildQuery(sqb, searchRequest.get("filters"));
 		return processResults(mgr.search(query, new JacksonHandle(), start).get());
@@ -153,8 +151,8 @@ public class SearchController extends AbstractController {
 				else if (value.has("point") && value.get("point").isArray()) {
 					return sqb.geospatialConstraint(constraint, sqb.polygon(
 							StreamSupport.stream(value.get("point").spliterator(), false)
-								.map(jsonNode -> sqb.point(jsonNode.get("latitude").asDouble(), jsonNode.get("longitude").asDouble()))
-								.toArray(StructuredQueryBuilder.Point[]::new)
+									.map(jsonNode -> sqb.point(jsonNode.get("latitude").asDouble(), jsonNode.get("longitude").asDouble()))
+									.toArray(StructuredQueryBuilder.Point[]::new)
 					));
 				}
 			default:
@@ -164,15 +162,15 @@ public class SearchController extends AbstractController {
 
 	protected JsonNode processResults(JsonNode node) {
 		StreamSupport.stream(node.get("results").spliterator(), false)
-			.map(jsonNode -> (ObjectNode)jsonNode)
-			.map(jsonNode -> {
-				try {
-					jsonNode.put("id", URLEncoder.encode(jsonNode.get("uri").asText(), "UTF-8"));
-				} catch (UnsupportedEncodingException e) {
-					e.printStackTrace();
-				}
-				return jsonNode;
-			}).collect(Collectors.toList());
+				.map(jsonNode -> (ObjectNode)jsonNode)
+				.map(jsonNode -> {
+					try {
+						jsonNode.put("id", URLEncoder.encode(jsonNode.get("uri").asText(), "UTF-8"));
+					} catch (UnsupportedEncodingException e) {
+						e.printStackTrace();
+					}
+					return jsonNode;
+				}).collect(Collectors.toList());
 		return node;
 	}
 }
