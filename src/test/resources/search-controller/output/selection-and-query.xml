@@ -1,0 +1,35 @@
+<query xmlns="http://marklogic.com/appservices/search" xmlns:search="http://marklogic.com/appservices/search" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <and-query>
+        <term-query>
+            <text/>
+        </term-query>
+        <and-query>
+            <range-constraint-query>
+                <constraint-name>eyeColor</constraint-name>
+                <value>blue</value>
+                <range-operator>EQ</range-operator>
+            </range-constraint-query>
+            <range-constraint-query>
+                <constraint-name>eyeColor</constraint-name>
+                <value>brown</value>
+                <range-operator>EQ</range-operator>
+            </range-constraint-query>
+        </and-query>
+        <collection-constraint-query>
+            <constraint-name>Collection</constraint-name>
+            <uri>data</uri>
+        </collection-constraint-query>
+        <and-query>
+            <collection-constraint-query>
+                <constraint-name>Collection</constraint-name>
+                <uri>data</uri>
+            </collection-constraint-query>
+            <not-query>
+                <collection-constraint-query>
+                    <constraint-name>Collection</constraint-name>
+                    <uri>stuff</uri>
+                </collection-constraint-query>
+            </not-query>
+        </and-query>
+    </and-query>
+</query>

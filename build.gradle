@@ -29,6 +29,8 @@ dependencies {
 	compile "com.marklogic:marklogic-client-api:4.1.0"
 
 	testCompile "com.marklogic:marklogic-junit:0.10.0"
+	testCompile "org.xmlunit:xmlunit-core:2.6.2"
+	testCompile "org.xmlunit:xmlunit-assertj:2.6.2"
 
 	// Neither Gradle nor Intellij are happy without both of these included, not sure why
 	testRuntime "org.junit.jupiter:junit-jupiter-api:5.3.0"

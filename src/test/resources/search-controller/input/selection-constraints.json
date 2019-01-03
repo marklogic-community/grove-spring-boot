@@ -1,0 +1,40 @@
+{
+  "filters": {
+    "and": [
+      {
+        "type": "selection",
+        "constraintType": "value",
+        "constraint": "Value",
+        "mode": "and",
+        "value": [
+          "value1",
+          "value2"
+        ]
+      },
+      {
+        "type": "selection",
+        "constraintType": "word",
+        "constraint": "Word",
+        "mode": "and",
+        "value": [
+          "word1",
+          "word2"
+        ]
+      },
+      {
+        "type": "selection",
+        "constraintType": "custom",
+        "constraint": "Custom",
+        "mode": "and",
+        "value": [
+          "custom1",
+          "custom2"
+        ]
+      }
+    ]
+  },
+  "options": {
+    "pageLength": 10,
+    "start": 1
+  }
+}

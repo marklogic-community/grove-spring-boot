@@ -1,0 +1,43 @@
+{
+  "filters": {
+    "type": "selection",
+    "constraintType": "geospatial",
+    "constraint": "Location",
+    "mode": "and",
+    "value": [
+      {
+        "north": 100,
+        "south": 0,
+        "west": 150,
+        "east": -150
+      },
+      {
+        "latitude": 0,
+        "longitude": 100
+      },
+      {
+        "radius": 100,
+        "point": {
+          "latitude": 100,
+          "longitude": 0
+        }
+      },
+      {
+        "point": [
+          {
+            "latitude": 0,
+            "longitude": 100
+          },
+          {
+            "latitude": 100,
+            "longitude": 0
+          }
+        ]
+      }
+    ]
+  },
+  "options": {
+    "pageLength": 10,
+    "start": 1
+  }
+}

@@ -1,0 +1,34 @@
+<query xmlns="http://marklogic.com/appservices/search" xmlns:search="http://marklogic.com/appservices/search" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <and-query>
+        <and-query>
+            <value-constraint-query>
+                <constraint-name>Value</constraint-name>
+                <text>value1</text>
+            </value-constraint-query>
+            <value-constraint-query>
+                <constraint-name>Value</constraint-name>
+                <text>value2</text>
+            </value-constraint-query>
+        </and-query>
+        <and-query>
+            <word-constraint-query>
+                <constraint-name>Word</constraint-name>
+                <text>word1</text>
+            </word-constraint-query>
+            <word-constraint-query>
+                <constraint-name>Word</constraint-name>
+                <text>word2</text>
+            </word-constraint-query>
+        </and-query>
+        <and-query>
+            <custom-constraint-query>
+                <constraint-name>Custom</constraint-name>
+                <text>custom1</text>
+            </custom-constraint-query>
+            <custom-constraint-query>
+                <constraint-name>Custom</constraint-name>
+                <text>custom2</text>
+            </custom-constraint-query>
+        </and-query>
+    </and-query>
+</query>

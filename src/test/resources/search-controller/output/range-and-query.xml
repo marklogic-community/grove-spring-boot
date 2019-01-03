@@ -1,0 +1,36 @@
+<query xmlns="http://marklogic.com/appservices/search" xmlns:search="http://marklogic.com/appservices/search" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <and-query>
+        <term-query>
+            <text/>
+        </term-query>
+        <and-query>
+            <range-constraint-query>
+                <constraint-name>age</constraint-name>
+                <value>20</value>
+                <range-operator>GE</range-operator>
+            </range-constraint-query>
+            <range-constraint-query>
+                <constraint-name>age</constraint-name>
+                <value>99</value>
+                <range-operator>NE</range-operator>
+            </range-constraint-query>
+        </and-query>
+        <range-constraint-query>
+            <constraint-name>height</constraint-name>
+            <value>20</value>
+            <range-operator>GE</range-operator>
+        </range-constraint-query>
+        <or-query>
+            <range-constraint-query>
+                <constraint-name>someOr</constraint-name>
+                <value>20</value>
+                <range-operator>GE</range-operator>
+            </range-constraint-query>
+            <range-constraint-query>
+                <constraint-name>someOr</constraint-name>
+                <value>99</value>
+                <range-operator>NE</range-operator>
+            </range-constraint-query>
+        </or-query>
+    </and-query>
+</query>

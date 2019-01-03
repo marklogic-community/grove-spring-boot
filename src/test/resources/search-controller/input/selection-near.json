@@ -1,0 +1,33 @@
+{
+  "filters": {
+    "near": [
+      {
+        "type": "queryText",
+        "value": ""
+      },
+      {
+        "constraint": "eyeColor",
+        "constraintType": "range",
+        "mode": "or",
+        "type": "selection",
+        "value": [
+          "blue",
+          "brown"
+        ]
+      },
+      {
+        "constraint": "Collection",
+        "constraintType": "collection",
+        "mode": "or",
+        "type": "selection",
+        "value": [
+          "data"
+        ]
+      }
+    ]
+  },
+  "options": {
+    "pageLength": 10,
+    "start": 1
+  }
+}

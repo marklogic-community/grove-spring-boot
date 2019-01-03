@@ -1,25 +1,31 @@
 package com.marklogic.grove.boot.search;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.marklogic.client.DatabaseClient;
-import com.marklogic.client.io.SearchHandle;
-import com.marklogic.client.query.FacetResult;
-import com.marklogic.client.query.FacetValue;
-import com.marklogic.client.query.MatchDocumentSummary;
+import com.marklogic.client.io.JacksonHandle;
 import com.marklogic.client.query.QueryDefinition;
 import com.marklogic.client.query.QueryManager;
+import com.marklogic.client.query.StructuredQueryBuilder;
+import com.marklogic.client.query.StructuredQueryDefinition;
 import com.marklogic.grove.boot.AbstractController;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/api/search")
 public class SearchController extends AbstractController {
 
 	@RequestMapping(value = "/{type}", method = RequestMethod.POST)
-	public SearchFacetsAndResults search(@PathVariable String type, @RequestBody SearchRequest searchRequest, HttpSession session) {
+	public JsonNode search(@PathVariable String type, @RequestBody SearchRequest searchRequest, HttpSession session) {
 		final long start = searchRequest.getOptions().getStart();
 		final long pageLength = searchRequest.getOptions().getPageLength();
 
@@ -27,56 +33,137 @@ public class SearchController extends AbstractController {
 
 		QueryManager mgr = client.newQueryManager();
 		mgr.setPageLength(pageLength);
-		QueryDefinition query = mgr.newStringDefinition(type);
-		SearchHandle handle = mgr.search(query, new SearchHandle(), start);
-		return convertToSearchFacetsAndResults(handle);
+		StructuredQueryBuilder sqb = mgr.newStructuredQueryBuilder(type);
+		StructuredQueryDefinition query = buildQuery(sqb, searchRequest.getFilters());
+		return processResults(mgr.search(query, new JacksonHandle(), start).get());
 	}
 
-	protected SearchFacetsAndResults convertToSearchFacetsAndResults(SearchHandle handle) {
-		SearchFacetsAndResults facetsAndResults = new SearchFacetsAndResults();
-		facetsAndResults.setPageLength(handle.getPageLength());
-		facetsAndResults.setStart(handle.getStart());
-		facetsAndResults.setTotal(handle.getTotalResults());
-
-		SearchResult[] results = new SearchResult[handle.getMatchResults().length];
-		for (int i = 0; i < results.length; i++) {
-			results[i] = convertToSearchResult(handle.getMatchResults()[i]);
+	protected StructuredQueryDefinition buildQuery(StructuredQueryBuilder sqb, JsonNode filters) {
+		if (filters.has("and")) {
+			JsonNode and = filters.get("and");
+			return sqb.and(arrayFromNode(sqb, and));
 		}
-		facetsAndResults.setResults(results);
-
-		FacetResult[] facetResults = handle.getFacetResults();
-		SearchFacets searchFacets = new SearchFacets();
-		List<SearchFacet> facetList = new ArrayList<>();
-		if (facetResults != null) {
-			for (FacetResult facetResult : facetResults) {
-				SearchFacet searchFacet = new SearchFacet();
-				// TODO This doesn't seem correct, but the name has to go somewhere right??
-				searchFacet.setType(facetResult.getName());
-				List<com.marklogic.grove.boot.search.FacetValue> groveFacetValues = new ArrayList<>();
-				for (FacetValue facetValue : facetResult.getFacetValues()) {
-					com.marklogic.grove.boot.search.FacetValue groveFacetValue = new com.marklogic.grove.boot.search.FacetValue();
-					groveFacetValue.setName(facetValue.getName());
-					groveFacetValue.setLabel(facetValue.getLabel());
-					groveFacetValue.setCount(facetValue.getCount());
-					groveFacetValue.setValue(facetValue.getName()); // name = value
-					groveFacetValues.add(groveFacetValue);
+		else if (filters.has("or")) {
+			JsonNode or = filters.get("or");
+			return sqb.or(arrayFromNode(sqb, or));
+		}
+		else if (filters.has("not")) {
+			JsonNode not = filters.get("not");
+			return sqb.not(buildQuery(sqb, not));
+		}
+		else if (filters.has("near")) {
+			JsonNode near = filters.get("near");
+			return sqb.near(arrayFromNode(sqb, near));
+		}
+		else {
+			String type = filters.has("type") ? filters.get("type").asText() : "selection";
+			if (type.equals("queryText")) {
+				if (filters.has("constraint")) {
+					return createConstraint(sqb, filters.get("constraintType").asText(), filters.get("constraint").asText(), "EQ", filters.get("value"));
 				}
-				searchFacet.setFacetValues(groveFacetValues.toArray(new com.marklogic.grove.boot.search.FacetValue[]{}));
-				facetList.add(searchFacet);
+
+				return sqb.term(filters.get("value").asText());
+			}
+			else {
+				List<StructuredQueryDefinition> queries = new ArrayList<>();
+				if (type.equals("selection")) {
+					JsonNode value = filters.get("value");
+					if (value.isArray()) {
+						for (JsonNode v : value) {
+							queries.addAll(createSelectionQueries(sqb, filters.get("constraintType").asText(), filters.get("constraint").asText(), v));
+						}
+					} else {
+						queries.addAll(createSelectionQueries(sqb, filters.get("constraintType").asText(), filters.get("constraint").asText(), value));
+					}
+				}
+				else if (type.equals("range")) {
+					filters.get("value").fieldNames().forEachRemaining(key -> {
+						String constraintType = filters.has("constraintType") ? filters.get("constraintType").asText() : "";
+						queries.add(createConstraint(sqb, constraintType, filters.get("constraint").asText(), key.toUpperCase(), filters.get("value").get(key)));
+					});
+				}
+
+				if (queries.size() == 1) {
+					return queries.get(0);
+				}
+
+				String filterMode = filters.has("mode") ? filters.get("mode").asText() : "and";
+				if (filterMode.equals("or")) {
+					return sqb.or(queries.toArray(new StructuredQueryDefinition[0]));
+				}
+
+				return sqb.and(queries.toArray(new StructuredQueryDefinition[0]));
 			}
 		}
-		searchFacets.setFacets(facetList.toArray(new SearchFacet[]{}));
-		facetsAndResults.setFacets(searchFacets);
-
-		return facetsAndResults;
 	}
 
-	protected SearchResult convertToSearchResult(MatchDocumentSummary match) {
-		SearchResult result = new SearchResult();
-		result.setId(match.getUri()); // TODO Not sure how an ID differs from a URI
-		result.setUri(match.getUri());
-		result.setLabel(match.getPath()); // TODO Not sure how to determine a label yet
-		result.setScore(match.getScore());
-		return result;
+	private StructuredQueryDefinition[] arrayFromNode(StructuredQueryBuilder sqb, JsonNode node) {
+		StructuredQueryDefinition[] q;
+		if (!node.isArray()) {
+			q = new StructuredQueryDefinition[] { buildQuery(sqb, node) };
+		}
+		else {
+			q = StreamSupport.stream(node.spliterator(), false)
+					.map(jsonNode -> buildQuery(sqb, jsonNode))
+					.toArray(StructuredQueryDefinition[]::new);
+		}
+		return q;
+	}
+
+	private List<StructuredQueryDefinition> createSelectionQueries(StructuredQueryBuilder sqb, String constraintType, String constraint, JsonNode v) {
+		List<StructuredQueryDefinition> queries = new ArrayList<>();
+		if (v.has("not")) {
+			queries.add(sqb.not(createConstraint(sqb, constraintType, constraint, "EQ", v.get("not"))));
+		}
+		else {
+			queries.add(createConstraint(sqb, constraintType, constraint, "EQ", v));
+		}
+		return queries;
+	}
+
+	private StructuredQueryDefinition createConstraint(StructuredQueryBuilder sqb, String constraintType, String constraint, String operator, JsonNode value) {
+		switch (constraintType) {
+			case "value":
+				return sqb.valueConstraint(constraint, value.asText());
+			case "word":
+				return sqb.wordConstraint(constraint, value.asText());
+			case "custom":
+				return sqb.customConstraint(constraint, value.asText());
+			case "collection":
+				return sqb.collectionConstraint(constraint, value.asText());
+			case "geospatial":
+				if (value.has("north")) {
+					return sqb.geospatialConstraint(constraint, sqb.box(value.get("south").asDouble(), value.get("west").asDouble(), value.get("north").asDouble(), value.get("east").asDouble()));
+				}
+				else if (value.has("latitude")) {
+					return sqb.geospatialConstraint(constraint, sqb.point(value.get("latitude").asDouble(), value.get("longitude").asDouble()));
+				}
+				else if (value.has("radius")) {
+					return sqb.geospatialConstraint(constraint, sqb.circle(sqb.point(value.get("point").get("latitude").asDouble(), value.get("point").get("longitude").asDouble()), value.get("radius").asDouble()));
+				}
+				else if (value.has("point") && value.get("point").isArray()) {
+					return sqb.geospatialConstraint(constraint, sqb.polygon(
+							StreamSupport.stream(value.get("point").spliterator(), false)
+								.map(jsonNode -> sqb.point(jsonNode.get("latitude").asDouble(), jsonNode.get("longitude").asDouble()))
+								.toArray(StructuredQueryBuilder.Point[]::new)
+					));
+				}
+			default:
+				return sqb.rangeConstraint(constraint, StructuredQueryBuilder.Operator.valueOf(operator), value.asText());
+		}
+	}
+
+	protected JsonNode processResults(JsonNode node) {
+		StreamSupport.stream(node.get("results").spliterator(), false)
+			.map(jsonNode -> (ObjectNode)jsonNode)
+			.map(jsonNode -> {
+				try {
+					jsonNode.put("id", URLEncoder.encode(jsonNode.get("uri").asText(), "UTF-8"));
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+				return jsonNode;
+			}).collect(Collectors.toList());
+		return node;
 	}
 }
