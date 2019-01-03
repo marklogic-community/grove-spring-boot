@@ -1,0 +1,14 @@
+{
+  "filters": {
+    "and": {
+      "constraint": "eyeColor",
+      "constraintType": "range",
+      "type": "selection",
+      "value": "blue"
+    }
+  },
+  "options": {
+    "pageLength": 10,
+    "start": 1
+  }
+}

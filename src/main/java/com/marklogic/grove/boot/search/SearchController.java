@@ -1,10 +1,11 @@
 package com.marklogic.grove.boot.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.io.JacksonHandle;
+import com.marklogic.client.query.QueryDefinition;
+
 import com.marklogic.client.query.QueryManager;
 import com.marklogic.client.query.StructuredQueryBuilder;
 import com.marklogic.client.query.StructuredQueryDefinition;
@@ -13,216 +14,159 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/api/search")
 public class SearchController extends AbstractController {
 
 	@RequestMapping(value = "/{type}", method = RequestMethod.POST)
-	public JsonNode search(@PathVariable String type, @RequestBody ObjectNode searchRequest, HttpSession session) {
-		return search(type, searchRequest, session, QueryManager.QueryView.DEFAULT);
-	}
+	public JsonNode search(@PathVariable String type, @RequestBody SearchRequest searchRequest, HttpSession session) {
+		final long start = searchRequest.getOptions().getStart();
+		final long pageLength = searchRequest.getOptions().getPageLength();
 
-	@RequestMapping(value = "/{type}/facets", method = RequestMethod.POST)
-	public JsonNode searchForFacets(@PathVariable String type, @RequestBody ObjectNode searchRequest, HttpSession session) {
-		return search(type, searchRequest, session, QueryManager.QueryView.FACETS);
-	}
-
-	@RequestMapping(value = "/{type}/results", method = RequestMethod.POST)
-	public JsonNode searchForResults(@PathVariable String type, @RequestBody ObjectNode searchRequest, HttpSession session) {
-		return search(type, searchRequest, session, QueryManager.QueryView.RESULTS);
-	}
-
-	/**
-	 * The main work here is in converting the JSON search request into a StructuredQueryDefinition via a
-	 * StructuredQueryBuilder. This work is done via a protected method so that it can be unit tested.
-	 *
-	 * @param type
-	 * @param searchRequest
-	 * @param session
-	 * @return
-	 */
-	private JsonNode search(String type, ObjectNode searchRequest, HttpSession session, QueryManager.QueryView queryView) {
 		DatabaseClient client = (DatabaseClient) session.getAttribute("grove-spring-boot-client");
-
-		long start = 1;
-		long pageLength = 10;
-		if (searchRequest.has("options")) {
-			ObjectNode options = (ObjectNode) searchRequest.get("options");
-			if (options.has("start")) {
-				start = options.get("start").asLong();
-			}
-			if (options.has("pageLength")) {
-				pageLength = options.get("pageLenth").asLong();
-			}
-		}
-
 
 		QueryManager mgr = client.newQueryManager();
 		mgr.setPageLength(pageLength);
-		mgr.setView(queryView);
 
-		StructuredQueryDefinition query = buildStructuredQuery(mgr, type, (ObjectNode) searchRequest.get("filters"));
-		return mgr.search(query, new JacksonHandle(), start).get();
+		StructuredQueryBuilder sqb = mgr.newStructuredQueryBuilder(type);
+		StructuredQueryDefinition query = buildQuery(sqb, searchRequest.getFilters());
+		return processResults(mgr.search(query, new JacksonHandle(), start).get());
 	}
 
-	/**
-	 * Handles all the work of converting the given filters into a structured query.
-	 *
-	 * @param mgr
-	 * @param type
-	 * @param filters
-	 * @return
-	 */
-	protected StructuredQueryDefinition buildStructuredQuery(QueryManager mgr, String type, ObjectNode filters) {
-		final String criteria = extractCriteria(filters);
-		StructuredQueryDefinition query = processObject(mgr.newStructuredQueryBuilder(type), filters);
-		return criteria != null ? query.withCriteria(criteria) : query;
-	}
-
-	/**
-	 * The search text that a user enters into a search bar is expected to be in the array of the top-level "and" query.
-	 * This needs to be removed from the filters object so it can be set on the StructuredQueryDefinition as criteria.
-	 *
-	 * @param filters
-	 * @return
-	 */
-	private String extractCriteria(ObjectNode filters) {
+	protected StructuredQueryDefinition buildQuery(StructuredQueryBuilder sqb, JsonNode filters) {
 		if (filters.has("and")) {
-			ArrayNode topLevelAndNode = (ArrayNode) filters.get("and");
-			for (int i = 0; i < topLevelAndNode.size(); i++) {
-				JsonNode node = topLevelAndNode.get(i);
-				if (node.has("type") && "queryText".equals(node.get("type").asText()) && node.has("value")) {
-					ObjectNode queryTextNode = (ObjectNode) node;
-					String value = queryTextNode.get("value").asText();
-					if (StringUtils.hasText(value)) {
-						topLevelAndNode.remove(i);
-						return value;
+			JsonNode and = filters.get("and");
+			return sqb.and(arrayFromNode(sqb, and));
+		}
+		else if (filters.has("or")) {
+			JsonNode or = filters.get("or");
+			return sqb.or(arrayFromNode(sqb, or));
+		}
+		else if (filters.has("not")) {
+			JsonNode not = filters.get("not");
+			return sqb.not(buildQuery(sqb, not));
+		}
+		else if (filters.has("near")) {
+			JsonNode near = filters.get("near");
+			return sqb.near(arrayFromNode(sqb, near));
+		}
+		else {
+			String type = filters.has("type") ? filters.get("type").asText() : "selection";
+			if (type.equals("queryText")) {
+				if (filters.has("constraint")) {
+					return createConstraint(sqb, filters.get("constraintType").asText(), filters.get("constraint").asText(), "EQ", filters.get("value"));
+				}
+
+				return sqb.term(filters.get("value").asText());
+			}
+			else {
+				List<StructuredQueryDefinition> queries = new ArrayList<>();
+				if (type.equals("selection")) {
+					JsonNode value = filters.get("value");
+					if (value.isArray()) {
+						for (JsonNode v : value) {
+							queries.addAll(createSelectionQueries(sqb, filters.get("constraintType").asText(), filters.get("constraint").asText(), v));
+						}
+					} else {
+						queries.addAll(createSelectionQueries(sqb, filters.get("constraintType").asText(), filters.get("constraint").asText(), value));
 					}
 				}
+				else if (type.equals("range")) {
+					filters.get("value").fieldNames().forEachRemaining(key -> {
+						String constraintType = filters.has("constraintType") ? filters.get("constraintType").asText() : "";
+						queries.add(createConstraint(sqb, constraintType, filters.get("constraint").asText(), key.toUpperCase(), filters.get("value").get(key)));
+					});
+				}
+
+				if (queries.size() == 1) {
+					return queries.get(0);
+				}
+
+				String filterMode = filters.has("mode") ? filters.get("mode").asText() : "and";
+				if (filterMode.equals("or")) {
+					return sqb.or(queries.toArray(new StructuredQueryDefinition[0]));
+				}
+
+				return sqb.and(queries.toArray(new StructuredQueryDefinition[0]));
 			}
 		}
-		return null;
 	}
 
-	/**
-	 * TODO The example has an "or" query on an array of two strings - but the schema doesn't seem to allow this.
-	 *
-	 * @param queryBuilder
-	 * @param node
-	 * @return
-	 */
-	private StructuredQueryDefinition processObject(StructuredQueryBuilder queryBuilder, ObjectNode node) {
-		// Should only have a single field
-		String name = node.fieldNames().next();
-		if (node.has("type")) {
-			return processTypedFilter(queryBuilder, node);
-		} else if (node.has("or")) {
-			return queryBuilder.or(processArray(queryBuilder, (ArrayNode) node.get("or")));
-		} else if (node.has("and")) {
-			return queryBuilder.and(processArray(queryBuilder, (ArrayNode) node.get("and")));
-		} else if (node.has("not")) {
-			return queryBuilder.not(processObject(queryBuilder, (ObjectNode) node.get("not")));
-		} else if (node.has("near")) {
-			return processNearFilter(queryBuilder, node);
-		} else {
-			throw new UnsupportedOperationException("Unsupported filter: " + name);
+	private StructuredQueryDefinition[] arrayFromNode(StructuredQueryBuilder sqb, JsonNode node) {
+		StructuredQueryDefinition[] q;
+		if (!node.isArray()) {
+			q = new StructuredQueryDefinition[] { buildQuery(sqb, node) };
 		}
+		else {
+			q = StreamSupport.stream(node.spliterator(), false)
+					.map(jsonNode -> buildQuery(sqb, jsonNode))
+					.toArray(StructuredQueryDefinition[]::new);
+		}
+		return q;
 	}
 
-	private StructuredQueryDefinition[] processArray(StructuredQueryBuilder queryBuilder, ArrayNode array) {
+	private List<StructuredQueryDefinition> createSelectionQueries(StructuredQueryBuilder sqb, String constraintType, String constraint, JsonNode v) {
 		List<StructuredQueryDefinition> queries = new ArrayList<>();
-		array.forEach(node -> {
-			StructuredQueryDefinition query = processObject(queryBuilder, (ObjectNode) node);
-			if (query != null) {
-				queries.add(query);
-			}
-		});
-		return queries.toArray(new StructuredQueryDefinition[]{});
+		if (v.has("not")) {
+			queries.add(sqb.not(createConstraint(sqb, constraintType, constraint, "EQ", v.get("not"))));
+		}
+		else {
+			queries.add(createConstraint(sqb, constraintType, constraint, "EQ", v));
+		}
+		return queries;
 	}
 
-	private StructuredQueryDefinition processTypedFilter(StructuredQueryBuilder queryBuilder, JsonNode node) {
-		String type = node.get("type").asText().toLowerCase();
-		if (type.equals("querytext")) {
-			return processQueryTextFilter(queryBuilder, node);
-		} else if (type.equals("selection")) {
-			return processSelectionFilter(queryBuilder, node);
-		} else if (type.equals("range")) {
-			return processRangeFilter(queryBuilder, node);
-		} else {
-			throw new UnsupportedOperationException("Unsupported typed filter type: " + type);
+	private StructuredQueryDefinition createConstraint(StructuredQueryBuilder sqb, String constraintType, String constraint, String operator, JsonNode value) {
+		switch (constraintType) {
+			case "value":
+				return sqb.valueConstraint(constraint, value.asText());
+			case "word":
+				return sqb.wordConstraint(constraint, value.asText());
+			case "custom":
+				return sqb.customConstraint(constraint, value.asText());
+			case "collection":
+				return sqb.collectionConstraint(constraint, value.asText());
+			case "geospatial":
+				if (value.has("north")) {
+					return sqb.geospatialConstraint(constraint, sqb.box(value.get("south").asDouble(), value.get("west").asDouble(), value.get("north").asDouble(), value.get("east").asDouble()));
+				}
+				else if (value.has("latitude")) {
+					return sqb.geospatialConstraint(constraint, sqb.point(value.get("latitude").asDouble(), value.get("longitude").asDouble()));
+				}
+				else if (value.has("radius")) {
+					return sqb.geospatialConstraint(constraint, sqb.circle(sqb.point(value.get("point").get("latitude").asDouble(), value.get("point").get("longitude").asDouble()), value.get("radius").asDouble()));
+				}
+				else if (value.has("point") && value.get("point").isArray()) {
+					return sqb.geospatialConstraint(constraint, sqb.polygon(
+							StreamSupport.stream(value.get("point").spliterator(), false)
+								.map(jsonNode -> sqb.point(jsonNode.get("latitude").asDouble(), jsonNode.get("longitude").asDouble()))
+								.toArray(StructuredQueryBuilder.Point[]::new)
+					));
+				}
+			default:
+				return sqb.rangeConstraint(constraint, StructuredQueryBuilder.Operator.valueOf(operator), value.asText());
 		}
 	}
 
-	private StructuredQueryDefinition processQueryTextFilter(StructuredQueryBuilder queryBuilder, JsonNode node) {
-		String text = node.get("value").asText();
-		return StringUtils.hasText(text) ? queryBuilder.term(text) : null;
-	}
-
-	private StructuredQueryDefinition processSelectionFilter(StructuredQueryBuilder queryBuilder, JsonNode node) {
-		JsonNode value = node.get("value");
-		final String constraintType = node.has("constraintType") ? node.get("constraintType").asText() : "word";
-		final String constraint = node.get("constraint").asText();
-		if (value instanceof ArrayNode) {
-			String mode = "and";
-			if (node.has("mode")) {
-				mode = node.get("mode").asText();
-			}
-
-			List<StructuredQueryDefinition> selectionQueries = new ArrayList<>();
-			value.forEach(valueNode -> {
-				selectionQueries.add(buildSelectionQuery(queryBuilder, constraint, constraintType, valueNode));
-			});
-			if ("or".equalsIgnoreCase(mode)) {
-				return queryBuilder.or(selectionQueries.toArray(new StructuredQueryDefinition[]{}));
-			} else {
-				return queryBuilder.and(selectionQueries.toArray(new StructuredQueryDefinition[]{}));
-			}
-		} else {
-			return buildSelectionQuery(queryBuilder, constraint, constraintType, value);
-		}
-	}
-
-	private StructuredQueryDefinition buildSelectionQuery(StructuredQueryBuilder queryBuilder, String constraint, String constraintType, JsonNode valueNode) {
-		String constraintValue = parseValue(valueNode);
-		if ("range".equals(constraintType)) {
-			return queryBuilder.rangeConstraint(constraint, StructuredQueryBuilder.Operator.EQ, constraintValue);
-		}
-		return queryBuilder.wordConstraint(constraint, constraintValue);
-	}
-
-	private StructuredQueryDefinition processRangeFilter(StructuredQueryBuilder queryBuilder, JsonNode node) {
-		ObjectNode value = (ObjectNode) node.get("value");
-		final String constraint = node.get("constraint").asText();
-		List<StructuredQueryDefinition> rangeQueries = new ArrayList<>();
-		value.fieldNames().forEachRemaining(operator -> {
-			rangeQueries.add(queryBuilder.rangeConstraint(constraint, StructuredQueryBuilder.Operator.valueOf(operator.toUpperCase()), value.get(operator).asText()));
-		});
-		return queryBuilder.and(rangeQueries.toArray(new StructuredQueryDefinition[]{}));
-	}
-
-	private String parseValue(JsonNode node) {
-		if (node.has("not")) {
-			return "-" + node.get("not").asText();
-		}
-		return node.asText();
-	}
-
-	/**
-	 * TODO The docs don't match the example from search-api.json.
-	 *
-	 * @param queryBuilder
-	 * @param node
-	 * @return
-	 */
-	private StructuredQueryDefinition processNearFilter(StructuredQueryBuilder queryBuilder, ObjectNode node) {
-		ObjectNode nearNode = (ObjectNode) node.get("near");
-		int distance = nearNode.get("distance").asInt();
-		StructuredQueryDefinition leftQuery = processObject(queryBuilder, (ObjectNode) nearNode.get("left"));
-		StructuredQueryDefinition rightQuery = processObject(queryBuilder, (ObjectNode) nearNode.get("right"));
-		// TODO What should the Ordering be?
-		return queryBuilder.near(distance, 0, StructuredQueryBuilder.Ordering.UNORDERED, leftQuery, rightQuery);
+	protected JsonNode processResults(JsonNode node) {
+		StreamSupport.stream(node.get("results").spliterator(), false)
+			.map(jsonNode -> (ObjectNode)jsonNode)
+			.map(jsonNode -> {
+				try {
+					jsonNode.put("id", URLEncoder.encode(jsonNode.get("uri").asText(), "UTF-8"));
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+				}
+				return jsonNode;
+			}).collect(Collectors.toList());
+		return node;
 	}
 }
