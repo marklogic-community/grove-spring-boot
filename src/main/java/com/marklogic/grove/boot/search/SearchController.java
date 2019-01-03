@@ -4,19 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.io.JacksonHandle;
-import com.marklogic.client.query.QueryDefinition;
-
 import com.marklogic.client.query.QueryManager;
 import com.marklogic.client.query.StructuredQueryBuilder;
 import com.marklogic.client.query.StructuredQueryDefinition;
 import com.marklogic.grove.boot.AbstractController;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,9 +23,19 @@ import java.util.stream.StreamSupport;
 public class SearchController extends AbstractController {
 
 	@RequestMapping(value = "/{type}", method = RequestMethod.POST)
-	public JsonNode search(@PathVariable String type, @RequestBody SearchRequest searchRequest, HttpSession session) {
-		final long start = searchRequest.getOptions().getStart();
-		final long pageLength = searchRequest.getOptions().getPageLength();
+	public JsonNode search(@PathVariable String type, @RequestBody ObjectNode searchRequest, HttpSession session) {
+
+		long start = 1;
+		long pageLength = 10;
+		if (searchRequest.has("options")) {
+			ObjectNode options = (ObjectNode) searchRequest.get("options");
+			if (options.has("start")) {
+				start = options.get("start").asLong();
+			}
+			if (options.has("pageLength")) {
+				pageLength = options.get("pageLenth").asLong();
+			}
+		}
 
 		DatabaseClient client = (DatabaseClient) session.getAttribute("grove-spring-boot-client");
 
@@ -37,7 +43,7 @@ public class SearchController extends AbstractController {
 		mgr.setPageLength(pageLength);
 
 		StructuredQueryBuilder sqb = mgr.newStructuredQueryBuilder(type);
-		StructuredQueryDefinition query = buildQuery(sqb, searchRequest.getFilters());
+		StructuredQueryDefinition query = buildQuery(sqb, searchRequest.get("filters"));
 		return processResults(mgr.search(query, new JacksonHandle(), start).get());
 	}
 
