@@ -3,6 +3,10 @@
     "near": [
       {
         "type": "queryText",
+        "value": "test"
+      },
+      {
+        "type": "queryText",
         "value": ""
       },
       {
