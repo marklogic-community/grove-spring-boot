@@ -1,8 +1,9 @@
 <query xmlns="http://marklogic.com/appservices/search" xmlns:search="http://marklogic.com/appservices/search" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <near-query>
         <term-query>
-            <text/>
+            <text>test</text>
         </term-query>
+        <and-query/>
         <or-query>
             <range-constraint-query>
                 <constraint-name>eyeColor</constraint-name>

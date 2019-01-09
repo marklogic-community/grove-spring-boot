@@ -32,7 +32,7 @@ public class SearchController extends AbstractController {
 				start = options.get("start").asLong();
 			}
 			if (options.has("pageLength")) {
-				pageLength = options.get("pageLenth").asLong();
+				pageLength = options.get("pageLength").asLong();
 			}
 		}
 
@@ -69,7 +69,11 @@ public class SearchController extends AbstractController {
 					return createConstraint(sqb, filters.get("constraintType").asText(), filters.get("constraint").asText(), "EQ", filters.get("value"));
 				}
 
-				return sqb.term(filters.get("value").asText());
+				String value = filters.get("value").asText();
+				if (value.isEmpty()) {
+					return sqb.and(null);
+				}
+				return sqb.term(value);
 			}
 			else {
 				List<StructuredQueryDefinition> queries = new ArrayList<>();

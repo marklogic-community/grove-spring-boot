@@ -6,6 +6,10 @@ import com.marklogic.client.impl.QueryManagerImpl;
 import com.marklogic.client.query.StructuredQueryBuilder;
 import com.marklogic.client.query.StructuredQueryDefinition;
 import org.junit.jupiter.api.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.xmlunit.builder.Input;
 
 import javax.xml.transform.Source;
@@ -13,9 +17,10 @@ import java.io.IOException;
 
 import static org.xmlunit.assertj.XmlAssert.assertThat;
 
+@RunWith(SpringRunner.class)
+@SpringBootTest
 class SearchControllerTest {
 
-    private SearchController controller = new SearchController();
     private ObjectMapper objectMapper = new ObjectMapper();
 
     private ClassLoader loader = this.getClass().getClassLoader();
@@ -24,6 +29,26 @@ class SearchControllerTest {
 
     private StructuredQueryBuilder sqb = queryManager.newStructuredQueryBuilder();
 
+    @Autowired
+    private SearchController controller;
+
+    @Test
+    void testEndpoint() {
+        // TODO: test the endpoint with pagination
+    }
+
+    @Test
+    void emptyQuery() throws IOException {
+        JsonNode query = objectMapper.readTree(loader.getResourceAsStream("search-controller/input/empty-querytext.json"));
+        StructuredQueryDefinition q = controller.buildQuery(sqb, query.get("filters"));
+
+        Source expected = Input.fromFile(loader.getResource("search-controller/output/empty-querytext.xml").getFile()).build();
+        Source actual = Input.fromString(q.serialize()).build();
+        assertThat(expected)
+                .and(actual)
+                .ignoreWhitespace()
+                .areIdentical();
+    }
 
     @Test
     void buildSelectionAndQuery() throws IOException {

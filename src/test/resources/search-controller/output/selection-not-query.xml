@@ -2,8 +2,9 @@
     <not-query>
         <and-query>
             <term-query>
-                <text/>
+                <text>test</text>
             </term-query>
+            <and-query/>
             <or-query>
                 <range-constraint-query>
                     <constraint-name>eyeColor</constraint-name>
