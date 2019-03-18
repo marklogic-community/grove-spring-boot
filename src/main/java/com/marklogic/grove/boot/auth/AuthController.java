@@ -3,6 +3,7 @@ package com.marklogic.grove.boot.auth;
 import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.DatabaseClientFactory;
 import com.marklogic.client.FailedRequestException;
+import com.marklogic.client.ResourceNotFoundException;
 import com.marklogic.client.io.InputStreamHandle;
 import com.marklogic.grove.boot.AbstractController;
 import com.marklogic.grove.boot.MarkLogicConfig;
@@ -40,15 +41,19 @@ public class AuthController extends AbstractController {
 		);
 
 		// Equivalent to a "HEAD" check
-		// TODO Figure out what to do with profile documents
+		final String userDocumentUri = "/api/users/" + request.getUsername() + ".json";
 		try {
-			client.newJSONDocumentManager().read("/api/users/" + request.getUsername() + ".json", new InputStreamHandle());
+			client.newJSONDocumentManager().read(userDocumentUri, new InputStreamHandle());
 		} catch (FailedRequestException ex) {
 			if (ex.getMessage().contains("Unauthorized")) {
 				response.setStatus(401);
 				return null;
 			}
 			throw ex;
+		} catch (ResourceNotFoundException ex) {
+			if (logger.isDebugEnabled()) {
+				logger.debug("Successfully authenticated request, though could not find user document at: " + userDocumentUri);
+			}
 		}
 
 		session.setAttribute(SESSION_USERNAME_KEY, request.getUsername());

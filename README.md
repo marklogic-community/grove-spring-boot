@@ -1,29 +1,14 @@
-This is a Spring Boot-based implementation of the Grove API. 
+The intent of this project is to produce a package containing a Spring Boot middle tier suitable for use in a 
+[MarkLogic Grove](https://marklogic-community.github.io/grove/) application.
 
-To run this locally, either run the Application class in your IDE, or run the following commands:
+To build the package (a zip file), run:
 
-    gradle bootRun
-    java -jar build/libs/grove-spring-boot-0.1.0.jar
+    ./gradlew buildPackage
 
-To try this out in a Grove application, create a Grove project like you normally would, but before running "npm start", 
-find the following line in your ui/package.json file:
+This produces the following file:
 
-    "proxy": "http://localhost:9003"
+    build/distributions/grove-spring-boot-(version).zip
 
-And change it to:
-
-    "proxy": "http://localhost:8080"
-
-That's telling the React app to talk to Spring Boot instead of the Node middle tier (which listens on port 9003).
-
-The Spring Boot application - including connection information to MarkLogic - can be configured in 
-src/main/resources/application.properties. 
-
-Full Spring Boot docs are at https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/ 
-
-Grove Developer's starter guide is at https://wiki.marklogic.com/display/SAL/MUIR+Developer+Starters+Guide 
-
-Grove APIs are at https://project.marklogic.com/repo/users/gjosten/repos/muir-core-api/browse
-
-Very helpful instructions for eventually combining this with the React project - https://karl.run/2018/05/07/kotlin-spring-boot-react/
- 
+To use this file in a Grove project that you've already created, simply unzip it in the root of the Grove project. 
+That will create a "spring-boot" directory with a README.md file that you can read to understand how to use the 
+Spring Boot middle tier. 
