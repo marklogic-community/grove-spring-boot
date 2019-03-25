@@ -71,7 +71,7 @@ public class SearchController extends AbstractController {
 
 				String value = filters.get("value").asText();
 				if (value.isEmpty()) {
-					return sqb.and(null);
+					return sqb.and();
 				}
 				return sqb.term(value);
 			}

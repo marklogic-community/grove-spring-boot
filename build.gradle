@@ -3,18 +3,13 @@ buildscript {
 		mavenCentral()
 	}
 	dependencies {
-		classpath("org.springframework.boot:spring-boot-gradle-plugin:2.1.1.RELEASE")
+		classpath "org.springframework.boot:spring-boot-gradle-plugin:2.1.1.RELEASE"
 	}
 }
 
 apply plugin: 'java'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
-
-bootJar {
-	baseName = 'grove-spring-boot'
-	version = '0.1.0'
-}
 
 repositories {
 	jcenter()
@@ -41,4 +36,32 @@ dependencies {
 // Needed by Gradle 4.6+ - see https://www.petrikainulainen.net/programming/testing/junit-5-tutorial-running-unit-tests-with-gradle/
 test {
 	useJUnitPlatform()
+}
+
+task buildPackage (type: Zip) {
+	from("src/main") {
+		into("spring-boot/src/main")
+	}
+	from(".") {
+		include "app.build.gradle"
+		into("spring-boot")
+		rename {
+			"build.gradle"
+		}
+	}
+	from(".") {
+		include "app.gradle.properties"
+		into("spring-boot")
+		rename {
+			"gradle.properties"
+		}
+	}
+	from(".") {
+		include "app.README.md"
+		into("spring-boot")
+		rename {
+			"README.md"
+		}
+	}
+	baseName "grove-spring-boot"
 }
