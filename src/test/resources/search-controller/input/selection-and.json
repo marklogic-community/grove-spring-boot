@@ -6,10 +6,6 @@
         "value": "test"
       },
       {
-        "type": "queryText",
-        "value": ""
-      },
-      {
         "constraint": "eyeColor",
         "constraintType": "range",
         "mode": "and",
