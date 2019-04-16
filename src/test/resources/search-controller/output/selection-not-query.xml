@@ -1,9 +1,7 @@
 <query xmlns="http://marklogic.com/appservices/search" xmlns:search="http://marklogic.com/appservices/search" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <not-query>
         <and-query>
-            <term-query>
-                <text>test</text>
-            </term-query>
+            <and-query/>
             <and-query/>
             <or-query>
                 <range-constraint-query>
