@@ -1,15 +1,18 @@
 buildscript {
 	repositories {
 		mavenCentral()
+		maven { url "https://plugins.gradle.org/m2/" }
 	}
 	dependencies {
-		classpath "org.springframework.boot:spring-boot-gradle-plugin:2.1.1.RELEASE"
+		classpath "org.springframework.boot:spring-boot-gradle-plugin:2.1.4.RELEASE"
+		classpath "com.github.jk1:gradle-license-report:1.6"
 	}
 }
 
 apply plugin: 'java'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
+apply plugin: "com.github.jk1.dependency-license-report"
 
 repositories {
 	jcenter()
@@ -21,7 +24,7 @@ targetCompatibility = 1.8
 
 dependencies {
 	compile "org.springframework.boot:spring-boot-starter-web"
-	compile "com.marklogic:marklogic-client-api:4.1.1"
+	compile "com.marklogic:marklogic-client-api:4.2.0"
 
 	testCompile "org.springframework.boot:spring-boot-starter-test"
 	testCompile "com.marklogic:marklogic-junit:0.11.0"
