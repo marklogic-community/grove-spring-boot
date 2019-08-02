@@ -1,11 +1,10 @@
 package com.marklogic.grove.boot.crud;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.document.*;
-import com.marklogic.client.io.DocumentMetadataHandle;
-import com.marklogic.client.io.Format;
-import com.marklogic.client.io.InputStreamHandle;
-import com.marklogic.client.io.StringHandle;
+import com.marklogic.client.io.*;
 import com.marklogic.grove.boot.error.NotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +26,7 @@ public class CrudController {
     void getDoc(@PathVariable String type, @PathVariable String uri, HttpSession session, HttpServletResponse response) throws IOException {
         DatabaseClient client = (DatabaseClient) session.getAttribute("grove-spring-boot-client");
         DocumentPage page = client.newDocumentManager().read(URLDecoder.decode(uri, "UTF-8"));
+
         if (!page.hasNext()) {
             throw new NotFoundException();
         }
@@ -34,6 +34,53 @@ public class CrudController {
         String mime = documentRecord.getFormat().getDefaultMimetype();
         response.setContentType(mime);
         response.getWriter().write(documentRecord.getContent(new StringHandle()).get());
+    }
+
+    @RequestMapping(value = "/{type}/{uri}/metadata", method = RequestMethod.GET)
+    void getDocMetadata(@PathVariable String type, @PathVariable String uri, HttpSession session, HttpServletResponse response) throws IOException {
+        DatabaseClient client = (DatabaseClient) session.getAttribute("grove-spring-boot-client");
+        GenericDocumentManager documentManager = client.newDocumentManager();
+        documentManager.setNonDocumentFormat(Format.JSON);
+        String docUri = URLDecoder.decode(uri, "UTF-8");
+        DocumentPage page = documentManager.readMetadata(docUri);
+
+        if (!page.hasNext()) {
+            throw new NotFoundException();
+        }
+
+        String mimeType = Format.JSON.getDefaultMimetype();
+        DocumentRecord documentRecord = page.next();
+        ObjectNode node = (ObjectNode)documentRecord.getMetadata(new JacksonHandle()).get();
+        node.put("contentType", mimeType);
+
+
+        page = documentManager.read(docUri);
+        if (!page.hasNext()) {
+            throw new NotFoundException();
+        }
+        documentRecord = page.next();
+
+        String[] splits = docUri.split("/");
+        String fileName = splits[splits.length - 1];
+        node.put("fileName", fileName);
+        node.put("format", "json");
+        node.put("size",  documentRecord.getContent(new StringHandle()).get().length());
+        node.put("uri", docUri);
+        ObjectMapper om = new ObjectMapper();
+        response.setContentType(mimeType);
+        response.getWriter().write(om.writeValueAsString(node));
+    }
+
+    @RequestMapping(value = "/{type}/{uri}", method = RequestMethod.PUT)
+    void updateDoc(@PathVariable String type, @PathVariable String uri, HttpSession session, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        DatabaseClient client = (DatabaseClient) session.getAttribute("grove-spring-boot-client");
+
+        DocumentMetadataHandle meta = new DocumentMetadataHandle();
+        InputStreamHandle content = new InputStreamHandle(request.getInputStream());
+
+        client.newDocumentManager().write(uri, meta, content);
+
+        response.setStatus(HttpStatus.NO_CONTENT.value());
     }
 
     @RequestMapping(value = "/{type}", method = RequestMethod.POST)
@@ -54,7 +101,7 @@ public class CrudController {
         DocumentMetadataHandle meta = new DocumentMetadataHandle();
         InputStreamHandle content = new InputStreamHandle(request.getInputStream());
 
-        DocumentDescriptor documentDescriptor = client.newDocumentManager().create(uriTemplate, meta, content);
+        DocumentDescriptor documentDescriptor = documentManager.create(uriTemplate, meta, content);
 
         response.setStatus(HttpStatus.CREATED.value());
         response.addHeader("location", documentDescriptor.getUri());

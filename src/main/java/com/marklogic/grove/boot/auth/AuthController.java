@@ -62,13 +62,14 @@ public class AuthController extends AbstractController {
 	}
 
 	@RequestMapping(value = "/logout", method = RequestMethod.POST)
-	public void logout(HttpSession session) {
+	public void logout(HttpSession session, HttpServletResponse response) {
 		logger.info("Logging out: " + getAuthenticatedUsername(session));
 		DatabaseClient client = (DatabaseClient) session.getAttribute(SESSION_DATABASE_CLIENT_KEY);
 		if (client != null) {
 			client.release();
 		}
 		session.invalidate();
+		response.setStatus(HttpStatus.NO_CONTENT.value());
 	}
 
 	@RequestMapping(value = "/status", method = RequestMethod.GET)
