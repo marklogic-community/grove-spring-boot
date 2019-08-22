@@ -23,12 +23,13 @@ You'll see in the logging that Tomcat is listening on port 9003. This is configu
 src/main/resources/application.properties. The Grove UI defaults to connecting to this port, which is defined in the 
 ui/package.json file via the "proxy" property. You're free to change this to any port that you wish.
 
-Next, instead of running "npm start" from the root Grove project directory (which starts both the UI and the Node 
-middle tier), you should run "npm start" from the "ui" project directory:
+Next, instead of running npm tasks from the root Grove project directory (which starts both the UI and the Node 
+middle tier), you should run them from the "ui" project director:
 
     cd ../ui
+    npm install
     npm start
- 
+
 This will only run the UI. If you were to run the Node middle tier as well, you'd get an error because Tomcat is 
 already listening on port 9003.
 
