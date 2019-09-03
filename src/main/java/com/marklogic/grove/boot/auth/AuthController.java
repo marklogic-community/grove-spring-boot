@@ -4,6 +4,8 @@ import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.DatabaseClientFactory;
 import com.marklogic.client.FailedRequestException;
 import com.marklogic.client.ResourceNotFoundException;
+import com.marklogic.client.DatabaseClientFactory.SecurityContext;
+import com.marklogic.client.ext.modulesloader.ssl.SimpleX509TrustManager;
 import com.marklogic.client.io.InputStreamHandle;
 import com.marklogic.grove.boot.AbstractController;
 import com.marklogic.grove.boot.MarkLogicConfig;
@@ -18,8 +20,9 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 /**
- * This is intended for development only, as it simply records a user as being "logged in" by virtue of being able to
- * instantiate a DatabaseClient, thereby assuming that the login credentials correspond to a MarkLogic user.
+ * This is intended for development only, as it simply records a user as being
+ * "logged in" by virtue of being able to instantiate a DatabaseClient, thereby
+ * assuming that the login credentials correspond to a MarkLogic user.
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -35,11 +38,29 @@ public class AuthController extends AbstractController {
 	public SessionStatus login(@RequestBody LoginRequest request, HttpSession session, HttpServletResponse response) {
 		logger.info("Logging in user: " + request.getUsername());
 		// TODO Handle error appropriately
-		DatabaseClient client = DatabaseClientFactory.newClient(
-			markLogicConfig.getHost(),
-			markLogicConfig.getRestPort(),
-			new DatabaseClientFactory.DigestAuthContext(request.getUsername(), request.getPassword())
-		);
+
+		DatabaseClient client;
+
+		// if connecting to MarkLogic using SSL
+		// DHS only uses SSL, mlUseSSL in application.properties has to be set to 'true'
+		if (markLogicConfig.getUseSSL()) {
+			SecurityContext dbSecurityContext = new DatabaseClientFactory.BasicAuthContext(request.getUsername(),
+					request.getPassword());
+
+			dbSecurityContext.withSSLContext(
+					SimpleX509TrustManager.newSSLContext(),
+					new SimpleX509TrustManager());
+
+			dbSecurityContext
+					.withSSLHostnameVerifier(com.marklogic.client.DatabaseClientFactory.SSLHostnameVerifier.ANY);
+
+			client = DatabaseClientFactory.newClient(markLogicConfig.getHost(),
+					markLogicConfig.getRestPort(), dbSecurityContext);
+
+		} else {
+			client = DatabaseClientFactory.newClient(markLogicConfig.getHost(), markLogicConfig.getRestPort(),
+					new DatabaseClientFactory.DigestAuthContext(request.getUsername(), request.getPassword()));
+		}
 
 		// Equivalent to a "HEAD" check
 		final String userDocumentUri = "/api/users/" + request.getUsername() + ".json";
@@ -53,7 +74,8 @@ public class AuthController extends AbstractController {
 			throw ex;
 		} catch (ResourceNotFoundException ex) {
 			if (logger.isDebugEnabled()) {
-				logger.debug("Successfully authenticated request, though could not find user document at: " + userDocumentUri);
+				logger.debug("Successfully authenticated request, though could not find user document at: "
+						+ userDocumentUri);
 			}
 		}
 
