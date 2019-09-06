@@ -14,6 +14,9 @@ public class MarkLogicConfig implements InitializingBean {
 	@Value("${mlRestPort}")
 	private Integer restPort;
 
+	@Value("${mlSimpleSsl}")
+	private boolean simpleSsl;
+
 	@Override
 	public void afterPropertiesSet() {
 		LoggerFactory.getLogger(getClass()).info(
@@ -26,5 +29,9 @@ public class MarkLogicConfig implements InitializingBean {
 
 	public Integer getRestPort() {
 		return restPort;
+	}
+
+	public boolean getSimpleSsl() {
+		return simpleSsl;
 	}
 }

@@ -25,7 +25,7 @@ public class AuthControllerTest {
 	@Test
 	public void logout() {
 		assertFalse(session.isInvalid());
-		controller.logout(session);
+		controller.logout(session, null);
 		assertTrue(session.isInvalid());
 	}
 }
