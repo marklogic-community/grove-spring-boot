@@ -41,9 +41,10 @@ public class AuthController extends AbstractController {
 
 		DatabaseClient client;
 
+		
 		// if connecting to MarkLogic using SSL
 		// DHS only uses SSL, mlUseSSL in application.properties has to be set to 'true'
-		if (markLogicConfig.getUseSSL()) {
+		if (markLogicConfig.getSimpleSsl()) {
 			SecurityContext dbSecurityContext = new DatabaseClientFactory.BasicAuthContext(request.getUsername(),
 					request.getPassword());
 

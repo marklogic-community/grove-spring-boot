@@ -14,8 +14,8 @@ public class MarkLogicConfig implements InitializingBean {
 	@Value("${mlRestPort}")
 	private Integer restPort;
 
-	@Value("${mlUseSSL}")
-	private boolean useSSL;
+	@Value("${mlSimpleSsl}")
+	private boolean simpleSsl;
 
 	@Override
 	public void afterPropertiesSet() {
@@ -31,7 +31,7 @@ public class MarkLogicConfig implements InitializingBean {
 		return restPort;
 	}
 
-	public boolean getUseSSL() {
-		return useSSL;
+	public boolean getSimpleSsl() {
+		return simpleSsl;
 	}
 }
